@@ -1,4 +1,5 @@
 #pragma once
+#include "BlockProperties.h"
 #include "Chunk.h"
 #include "FurnaceState.h"
 #include <functional>
@@ -20,6 +21,7 @@ public:
   void updateLighting();
   void render()const;
   BlockType getBlock(int x,int y,int z)const;
+  const BlockProperties& getBlockProperties(int x,int y,int z)const;
   std::uint8_t skyLight(int x,int y,int z)const;
   bool isChunkLoadedAt(int x,int z)const;
   using FurnaceDropHandler=std::function<void(const glm::vec3&,const ItemStack&)>;

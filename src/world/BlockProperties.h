@@ -4,10 +4,13 @@
 #include <optional>
 
 struct BlockProperties {
-  float hardness;
-  bool diggable;
+  float hardness=0.f;
+  bool diggable=false;
   std::optional<ToolKind> effectiveTool;
   std::optional<ToolTier> minTierToDrop;
+  bool isWalkable=false;
+  float movementCost=1.f;
+  bool isHazard=false;
 };
 
 const BlockProperties& getBlockProperties(BlockType type);
