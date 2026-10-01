@@ -46,6 +46,7 @@ BlockType World::lightingBlock(int x,int y,int z)const{
   return chunk?chunk->getBlock(x-cx*Chunk::SIZE_X,y,z-cz*Chunk::SIZE_Z):BlockType::BEDROCK;
 }
 BlockType World::getBlock(int x,int y,int z)const{if(x<0||x>=1000||z<0||z>=1000||y<0||y>=Chunk::SIZE_Y)return BlockType::AIR;int cx=floorDiv(x,16),cz=floorDiv(z,16);auto*c=find(cx,cz);return c?c->getBlock(x-cx*16,y,z-cz*16):BlockType::AIR;}
+const BlockProperties& World::getBlockProperties(int x,int y,int z)const{return ::getBlockProperties(getBlock(x,y,z));}
 std::uint8_t World::skyLight(int x,int y,int z)const{if(x<0||x>=1000||z<0||z>=1000||y<0||y>=Chunk::SIZE_Y)return 0;const int cx=floorDiv(x,16),cz=floorDiv(z,16);const auto* chunk=find(cx,cz);return chunk?chunk->skyLight(x-cx*16,y,z-cz*16):0;}
 bool World::isChunkLoadedAt(int x,int z)const{return x>=0&&x<1000&&z>=0&&z<1000&&find(floorDiv(x,16),floorDiv(z,16));}
 bool World::setBlock(int x,int y,int z,BlockType t,const FurnaceDropHandler& dropContents){

@@ -3,23 +3,23 @@
 
 namespace {
 constexpr std::array<BlockProperties,BLOCK_TYPE_COUNT> PROPERTIES={{
-  {0.f,false,std::nullopt,std::nullopt},
-  {1.2f,true,ToolKind::SHOVEL,std::nullopt},
-  {.5f,true,ToolKind::SHOVEL,std::nullopt},
-  {-1.f,false,std::nullopt,std::nullopt},
-  {4.f,true,ToolKind::PICKAXE,ToolTier::WOOD},
-  {4.f,true,ToolKind::PICKAXE,ToolTier::WOOD},
-  {2.f,true,ToolKind::AXE,std::nullopt},
-  {.6f,true,ToolKind::SHOVEL,std::nullopt},
-  {.2f,true,ToolKind::SHOVEL,std::nullopt},
-  {.6f,true,std::nullopt,std::nullopt},
-  {.2f,true,std::nullopt,std::nullopt},
-  {2.f,true,ToolKind::AXE,std::nullopt},
-  {2.5f,true,ToolKind::PICKAXE,ToolTier::WOOD},
-  {.2f,true,std::nullopt,std::nullopt},
-  {3.5f,true,ToolKind::PICKAXE,ToolTier::WOOD}
+  {0.f,false,std::nullopt,std::nullopt,true,1.f,false},
+  {1.2f,true,ToolKind::SHOVEL,std::nullopt,true,1.f,false},
+  {.5f,true,ToolKind::SHOVEL,std::nullopt,true,1.2f,false},
+  {-1.f,false,std::nullopt,std::nullopt,false,1.f,false},
+  {4.f,true,ToolKind::PICKAXE,ToolTier::WOOD,true,1.f,false},
+  {4.f,true,ToolKind::PICKAXE,ToolTier::WOOD,true,1.2f,false},
+  {2.f,true,ToolKind::AXE,std::nullopt,true,1.3f,false},
+  {.6f,true,ToolKind::SHOVEL,std::nullopt,true,1.6f,false},
+  {.2f,true,ToolKind::SHOVEL,std::nullopt,true,1.5f,false},
+  {.6f,true,std::nullopt,std::nullopt,false,1.f,false},
+  {.2f,true,std::nullopt,std::nullopt,true,1.25f,false},
+  {2.f,true,ToolKind::AXE,std::nullopt,true,1.3f,false},
+  {2.5f,true,ToolKind::PICKAXE,ToolTier::WOOD,true,1.f,false},
+  {0.f,false,std::nullopt,std::nullopt,true,1.f,false},
+  {3.5f,true,ToolKind::PICKAXE,ToolTier::WOOD,true,1.f,false}
 }};
-constexpr BlockProperties INVALID{0.f,false,std::nullopt,std::nullopt};
+constexpr BlockProperties INVALID{0.f,false,std::nullopt,std::nullopt,false,1.f,false};
 }
 
 BlockType miningDrop(BlockType mined){return mined==BlockType::STONE?BlockType::COBBLESTONE:mined;}
