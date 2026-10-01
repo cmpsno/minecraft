@@ -28,7 +28,7 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
   // of neighboring chunks' lighting state and update order.
   constexpr int width=SIZE_X+2*LIGHT_RADIUS,depth=SIZE_Z+2*LIGHT_RADIUS;
   constexpr int plane=width*depth;
-  const auto sampleIndex=[](int x,int y,int z){return (y*depth+z)*width+x;};
+  const auto sampleIndex=[width,depth](int x,int y,int z){return (y*depth+z)*width+x;};
   std::vector<std::uint8_t> light(plane*SIZE_Y,0),attenuation(plane*SIZE_Y,15);
   std::queue<int> open;
   const int ox=m_position.x*SIZE_X,oz=m_position.y*SIZE_Z;
@@ -91,4 +91,3 @@ void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
     }}
   m_mesh.update(v,idx);m_meshDirty=false;m_ready=true;
 }
-
