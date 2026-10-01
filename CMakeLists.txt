@@ -36,7 +36,7 @@ if(BUILD_TESTING)
   add_executable(PlayerPhysicsTests
     tests/PlayerPhysicsTests.cpp
     src/player/Player.cpp src/player/PlayerPhysics.cpp src/player/SurvivalState.cpp
-    src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp
+    src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/BlockProperties.cpp
     src/renderer/Mesh.cpp src/core/Shader.cpp)
   target_include_directories(PlayerPhysicsTests PRIVATE src)
   target_link_libraries(PlayerPhysicsTests PRIVATE glad_gl_core_33 glm::glm)
@@ -59,7 +59,7 @@ if(BUILD_TESTING)
   target_include_directories(ChunkLightingTests PRIVATE src)
   target_link_libraries(ChunkLightingTests PRIVATE glad_gl_core_33 glm::glm)
   add_test(NAME chunk_lighting COMMAND ChunkLightingTests)
-  add_executable(WorldLightingTests tests/WorldLightingTests.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/renderer/Mesh.cpp)
+  add_executable(WorldLightingTests tests/WorldLightingTests.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/BlockProperties.cpp src/renderer/Mesh.cpp)
   target_include_directories(WorldLightingTests PRIVATE src)
   target_link_libraries(WorldLightingTests PRIVATE glad_gl_core_33 glm::glm)
   add_test(NAME world_lighting COMMAND WorldLightingTests)
@@ -78,11 +78,11 @@ if(BUILD_TESTING)
   add_test(NAME break_mode COMMAND BreakModeTests)
   add_executable(WorldPersistenceTests
     tests/WorldPersistenceTests.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp
-    src/renderer/Mesh.cpp src/core/Shader.cpp)
+    src/world/BlockProperties.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
   target_include_directories(WorldPersistenceTests PRIVATE src)
   target_link_libraries(WorldPersistenceTests PRIVATE glad_gl_core_33 glm::glm)
   add_test(NAME world_persistence COMMAND WorldPersistenceTests)
-  add_executable(WorldStreamingTests tests/WorldStreamingTests.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
+  add_executable(WorldStreamingTests tests/WorldStreamingTests.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/BlockProperties.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
   target_include_directories(WorldStreamingTests PRIVATE src)
   target_link_libraries(WorldStreamingTests PRIVATE glad_gl_core_33 glm::glm)
   add_test(NAME world_streaming COMMAND WorldStreamingTests)
@@ -96,7 +96,7 @@ if(BUILD_TESTING)
   add_test(NAME save_load COMMAND SaveLoadTests)
   add_executable(GameStateTests
     tests/GameStateTests.cpp src/core/GameState.cpp src/player/Inventory.cpp src/player/CraftingRecipe.cpp src/player/Player.cpp src/player/PlayerPhysics.cpp src/player/SurvivalState.cpp
-    src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/Pathfinder.cpp src/world/PassiveMobSystem.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
+    src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/BlockProperties.cpp src/world/Pathfinder.cpp src/world/PassiveMobSystem.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
   target_include_directories(GameStateTests PRIVATE src)
   target_link_libraries(GameStateTests PRIVATE glad_gl_core_33 glm::glm)
   add_test(NAME game_state COMMAND GameStateTests)
@@ -109,7 +109,7 @@ if(BUILD_TESTING)
   add_test(NAME tool_tiers COMMAND ToolTierTests)
   add_executable(PlayerCameraTests
     tests/PlayerCameraTests.cpp src/player/PlayerCamera.cpp src/player/Player.cpp src/player/PlayerPhysics.cpp src/player/SurvivalState.cpp
-    src/utils/Raycaster.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp
+    src/utils/Raycaster.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/BlockProperties.cpp
     src/renderer/Mesh.cpp src/core/Shader.cpp)
   target_include_directories(PlayerCameraTests PRIVATE src)
   target_link_libraries(PlayerCameraTests PRIVATE glad_gl_core_33 glm::glm)
@@ -145,7 +145,7 @@ if(BUILD_TESTING)
   add_executable(FurnaceTickTests tests/FurnaceTickTests.cpp src/player/CraftingRecipe.cpp src/player/SurvivalState.cpp src/world/BlockProperties.cpp)
   target_include_directories(FurnaceTickTests PRIVATE src)
   add_test(NAME furnace_tick COMMAND FurnaceTickTests)
-  add_executable(FurnacePersistenceTests tests/FurnacePersistenceTests.cpp src/core/SaveLoad.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
+  add_executable(FurnacePersistenceTests tests/FurnacePersistenceTests.cpp src/core/SaveLoad.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/BlockProperties.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
   target_include_directories(FurnacePersistenceTests PRIVATE src)
   target_link_libraries(FurnacePersistenceTests PRIVATE glad_gl_core_33 glm::glm)
   add_test(NAME furnace_persistence COMMAND FurnacePersistenceTests)
@@ -175,7 +175,7 @@ if(BUILD_TESTING)
   target_include_directories(MenuCoreTests PRIVATE src)
   target_link_libraries(MenuCoreTests PRIVATE glfw glm::glm)
   add_test(NAME menu_core COMMAND MenuCoreTests)
-  add_executable(SeedSneakTests tests/SeedSneakTests.cpp src/player/Player.cpp src/player/PlayerPhysics.cpp src/player/SurvivalState.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
+  add_executable(SeedSneakTests tests/SeedSneakTests.cpp src/player/Player.cpp src/player/PlayerPhysics.cpp src/player/SurvivalState.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/world/BlockProperties.cpp src/renderer/Mesh.cpp src/core/Shader.cpp)
   target_include_directories(SeedSneakTests PRIVATE src)
   target_link_libraries(SeedSneakTests PRIVATE glad_gl_core_33 glm::glm)
   add_test(NAME seed_sneak COMMAND SeedSneakTests)
