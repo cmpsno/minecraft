@@ -19,6 +19,9 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
+      - name: Install glad generator dependency
+        run: python -m pip install jinja2
+
       - name: Build
         run: cmake --build build --config Release --parallel
 
