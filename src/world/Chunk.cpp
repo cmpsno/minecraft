@@ -72,9 +72,9 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
   m_lightingDirty=false;m_meshDirty=true;
 }
 
-void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
+ChunkMeshData Chunk::buildMeshData(const std::function<BlockType(int,int,int)>& at){
   if(m_lightingDirty)computeSkyLight(at);
-  std::vector<Vertex> v;std::vector<unsigned> idx;v.reserve(4096);idx.reserve(6144);
+  ChunkMeshData data;auto& v=data.vertices;auto& idx=data.indices;v.reserve(4096);idx.reserve(6144);
   static constexpr int dirs[6][3]={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
   static constexpr float q[6][4][3]={
     {{1,0,0},{1,1,0},{1,1,1},{1,0,1}},{{0,0,1},{0,1,1},{0,1,0},{0,0,0}},
@@ -89,5 +89,10 @@ void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
       float light=faceShade(x,y,z,f);for(int n=0;n<4;++n)v.push_back({wx+q[f][n][0],y+q[f][n][1],wz+q[f][n][2],us[n],vs[n],light});
       idx.insert(idx.end(),{base,base+1,base+2,base,base+2,base+3});
     }}
-  m_mesh.update(v,idx);m_meshDirty=false;m_ready=true;
+  return data;
+}
+
+void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
+  const auto data=buildMeshData(at);
+  m_mesh.update(data.vertices,data.indices);m_meshDirty=false;m_ready=true;
 }

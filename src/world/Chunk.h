@@ -1,5 +1,6 @@
 #pragma once
 #include "Block.h"
+#include "ChunkMeshData.h"
 #include "../renderer/Mesh.h"
 #include <array>
 #include <cstdint>
@@ -17,6 +18,7 @@ public:
   std::uint8_t skyLight(int x,int y,int z)const;
   // Face order: +X, -X, +Y, -Y, +Z, -Z. Includes directional shade.
   float faceShade(int x,int y,int z,int face)const;
+  ChunkMeshData buildMeshData(const std::function<BlockType(int,int,int)>& worldBlock);
   void generateMesh(const std::function<BlockType(int,int,int)>& worldBlock);
   void render()const{if(m_ready)m_mesh.render();}
   bool ready()const{return m_ready;}
@@ -34,4 +36,3 @@ private:
   static int index(int x,int y,int z){return(y*SIZE_Z+z)*SIZE_X+x;}
   static int lightIndex(int x,int y,int z){return(y*LIGHT_Z+z+1)*LIGHT_X+x+1;}
 };
-

@@ -1,10 +1,7 @@
-#include <glad/gl.h>
-#include <GLFW/glfw3.h>
 #include "world/Chunk.h"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <vector>
 
 namespace {
 struct Fingerprint {
@@ -29,21 +26,10 @@ auto worldBlock(Chunk& chunk){
 }
 
 Fingerprint meshFingerprint(Chunk& chunk){
-  chunk.generateMesh(worldBlock(chunk));
-  GLint vertexBuffer=0,vertexBytes=0;
-  glGetIntegerv(GL_ARRAY_BUFFER_BINDING,&vertexBuffer);
-  glGetBufferParameteriv(GL_ARRAY_BUFFER,GL_BUFFER_SIZE,&vertexBytes);
-  std::vector<Vertex> vertices(static_cast<std::size_t>(vertexBytes)/sizeof(Vertex));
-  glGetBufferSubData(GL_ARRAY_BUFFER,0,vertexBytes,vertices.data());
-
-  chunk.render();
-  GLint indexBytes=0;
-  glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER,GL_BUFFER_SIZE,&indexBytes);
-  std::vector<unsigned> indices(static_cast<std::size_t>(indexBytes)/sizeof(unsigned));
-  glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER,0,indexBytes,indices.data());
-  glBindVertexArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER,0);
-  return {vertices.size(),indices.size(),checksum(vertices.data(),vertices.size()*sizeof(Vertex)),checksum(indices.data(),indices.size()*sizeof(unsigned))};
+  const auto mesh=chunk.buildMeshData(worldBlock(chunk));
+  return {mesh.vertices.size(),mesh.indices.size(),
+          checksum(mesh.vertices.data(),mesh.vertices.size()*sizeof(Vertex)),
+          checksum(mesh.indices.data(),mesh.indices.size()*sizeof(unsigned))};
 }
 
 void makeSuperflat(Chunk& chunk){
@@ -59,15 +45,6 @@ void makeSuperflat(Chunk& chunk){
 int main(){
   static_assert(sizeof(Vertex)==sizeof(float)*6,"vertex buffer layout must remain six floats");
   static_assert(sizeof(unsigned)==sizeof(std::uint32_t),"index buffer layout must remain 32-bit");
-  if(!glfwInit())return 77;
-  glfwWindowHint(GLFW_VISIBLE,GLFW_FALSE);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
-  GLFWwindow* window=glfwCreateWindow(64,64,"Chunk mesh golden tests",nullptr,nullptr);
-  if(!window){glfwTerminate();return 77;}
-  glfwMakeContextCurrent(window);
-  if(!gladLoadGL(reinterpret_cast<GLADloadfunc>(glfwGetProcAddress))){glfwDestroyWindow(window);glfwTerminate();return 77;}
   int result=0;
   {
     Chunk flat({0,0});makeSuperflat(flat);
@@ -89,8 +66,5 @@ int main(){
       std::cerr<<"edge-edited mesh output changed\n";result=1;
     }
   }
-  if(glGetError()!=GL_NO_ERROR){std::cerr<<"OpenGL error while reading mesh buffers\n";result=1;}
-  glfwDestroyWindow(window);
-  glfwTerminate();
   return result;
 }
