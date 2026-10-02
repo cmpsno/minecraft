@@ -1,5 +1,6 @@
 #pragma once
 #include "Texture.h"
+#include "ChunkRenderer.h"
 #include "../core/MenuController.h"
 #include "ParticleSystem.h"
 #include "DropSystem.h"
@@ -26,9 +27,9 @@ public:
   void spawnBlockBreak(const glm::ivec3& block,BlockType type){m_particles.spawnBlockBreak(block,type);}
   void spawnDrop(const glm::vec3& position,const ItemStack& stack){m_drops.spawn(position,stack);}
   void updateDrops(float dt,const World& world,const glm::vec3& playerPosition,const DropSystem::PickupHandler& tryPickup){m_drops.update(dt,world,playerPosition,tryPickup);}
-  void draw(const World&,const Player&,const PassiveMobSystem&,bool showPlayer,float deltaTime,bool mining,float useSwingTimer,const glm::mat4&,const glm::mat4&,const glm::vec3& camera,const RayHit&,int width,int height,const std::string& hud,const Inventory&,bool inventoryOpen,bool tableOpen,int creativePage,float mouseX,float mouseY,const DayNightCycle&,int menuState=0,int viewDistance=4,const FurnaceState* furnace=nullptr);
+  void draw(World&,const Player&,const PassiveMobSystem&,bool showPlayer,float deltaTime,bool mining,float useSwingTimer,const glm::mat4&,const glm::mat4&,const glm::vec3& camera,const RayHit&,int width,int height,const std::string& hud,const Inventory&,bool inventoryOpen,bool tableOpen,int creativePage,float mouseX,float mouseY,const DayNightCycle&,int menuState=0,int viewDistance=4,const FurnaceState* furnace=nullptr);
 private:
-  Shader m_shader,m_colorShader,m_skyShader; Texture m_texture; ParticleSystem m_particles; DropSystem m_drops;
+  Shader m_shader,m_colorShader,m_skyShader; Texture m_texture; ParticleSystem m_particles; DropSystem m_drops; ChunkRenderer m_chunkRenderer;
   GLuint m_lineVao=0,m_lineVbo=0,m_skyVao=0,m_skyVbo=0;
   std::unique_ptr<PlayerRenderer> m_playerRenderer;
   std::unique_ptr<MobRenderer> m_mobRenderer;

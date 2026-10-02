@@ -14,12 +14,14 @@ public:
   enum class ChunkTaskType{GENERATE,UPDATE_LIGHTING,REBUILD_MESH};
   struct ChunkTask{ChunkTaskType type;glm::ivec2 position;};
   struct EditEntry{int x,y,z;BlockType type;};
+  struct ChunkMeshUpload{glm::ivec2 position;ChunkMeshData mesh;};
   explicit World(std::uint32_t seed=0):m_seed(seed){}
   std::uint32_t seed()const{return m_seed;}
   void reset(std::uint32_t seed=0){m_chunks.clear();m_edits.clear();m_furnaces.clear();m_pendingTasks.clear();m_seed=seed;}
   void update(const glm::vec3& player);
   void updateLighting();
-  void render()const;
+  std::vector<ChunkMeshUpload> takeChunkMeshUploads();
+  std::vector<glm::ivec2> loadedChunkPositions()const;
   BlockType getBlock(int x,int y,int z)const;
   const BlockProperties& getBlockProperties(int x,int y,int z)const;
   std::uint8_t skyLight(int x,int y,int z)const;
