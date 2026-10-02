@@ -92,7 +92,6 @@ ChunkMeshData Chunk::buildMeshData(const std::function<BlockType(int,int,int)>& 
   return data;
 }
 
-void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
-  const auto data=buildMeshData(at);
-  m_mesh.update(data.vertices,data.indices);m_meshDirty=false;m_ready=true;
+void Chunk::buildScheduledMeshData(const std::function<BlockType(int,int,int)>& at){
+  m_meshData=buildMeshData(at);m_meshDataPending=true;m_meshDirty=false;m_ready=true;
 }
