@@ -31,7 +31,17 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-Run `Minecraft` from the build output directory.
+When `CMAKE_BUILD_TYPE` is left unset on a single-config generator, the project defaults to `Release` automatically. Run `Minecraft` from the build output directory.
+
+## Testing
+
+```sh
+cmake -S . -B build -DBUILD_TESTING=ON
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+```
+
+This keeps the existing CTest names intact while verifying the full suite after changes. With MinGW, put the `bin` directory for the compiler used to build the project before other MinGW installations on `PATH` when running tests.
 
 ## Controls
 
