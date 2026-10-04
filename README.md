@@ -5,14 +5,16 @@
 
 ---
 ```markdown
-# Minecraft Superflat
-A small Minecraft-style voxel demo in C++17 and OpenGL 3.3.
+# Minecraft
+A small Minecraft-style voxel game in C++17 and OpenGL 3.3.
 
-Streams 16×256×16 chunks over a finite 1000×1000 world with varied superflat terrain, full oak trees, first-person movement, collision, inventory management, persistent block editing, and **passive mobs**.
+Streams 16×256×16 chunks over a finite 1000×1000 world with rolling noise-generated terrain, winding cave systems, coal and iron ore veins, full oak trees, first-person movement, collision, inventory management, persistent block editing, and **passive mobs**.
 
 ## Features
 
-- **Terrain** — varied Bedrock + Stone + Dirt superflat stack with full oak trees that span chunk boundaries; broken leaves have a 0.5% chance to drop an apple.
+- **Terrain** — seeded fractal-noise heightmap with rolling hills (surface varies ~35–80 blocks); Bedrock floor, stone/dirt layering, grass/sand/gravel surface patches, and oak trees rooted at the local surface height.
+- **Caves & Ores** — 3D-noise carvers wind tunnels through the stone below the surface; coal ore veins drop coal (a 4× furnace fuel) and deep iron ore veins smelt into iron ingots.
+- **Tool Progression** — wood → stone → iron tool tiers (60/130/250 durability, up to 4× mining speed); iron ore needs a stone pickaxe to drop, and iron tools are crafted from smelted ingots.
 - **Passive Mobs** — cows, pigs, and sheep spawn naturally in small packs and persist with the world. Adults idle and wander; babies follow nearby adults; damaged animals flee; sheep graze grass into dirt. Mobs have terrain-aware movement, attack hitboxes, mature after 20 minutes, and drop species-specific raw food and materials when killed. Drops remain in the world until collected.
 - **Combat & Tools** — left-click attacks a mob within 4.5 blocks; otherwise, hold to mine. Swords deal 4/5 damage (wood/stone); other tools deal 2/3. Wooden and stone tools mine faster, lose durability, and stone/cobblestone only drop with a wood-or-better pickaxe. Tool durability is shown under each inventory swatch and broken tools are removed at zero durability.
 - **Survival** — 20 health, 20 hunger, and 5 hidden saturation. Sprinting and jumping build exhaustion (consumes saturation first). Apples restore 4 hunger and 2.4 saturation. Natural healing at ≥18 hunger; starvation deals damage at 0 hunger. Falls over 3 blocks deal damage. Death clears inventory (world edits persist) and respawns you near world center.

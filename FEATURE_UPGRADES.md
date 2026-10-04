@@ -104,3 +104,16 @@ The v2.1 camera pass adds:
 - A decoupling of gameplay targeting from the on-screen camera: mining, placing, bed use, crafting-table use, and mob attacks now always raycast from the player's actual eye position and look direction, regardless of which camera is being drawn. Previously this ray was taken from the third-person camera itself, which happened to work for back view but would have pointed the wrong way (back toward the player) in front view.
 
 Movement remains tied to the player's own yaw (mouse-controlled), never to the camera, in all three modes — this was already true and did not need to change. No new assets or dependencies were introduced.
+
+## Terrain generation pass
+
+The terrain generation pass replaces the flat world with Java-1.0.0-style terrain and completes the underground progression loop:
+
+- A seeded fractal-Brownian-motion heightmap produces rolling hills (surface ~35–80 blocks) with bedrock, stone, and dirt layering and grass/sand/gravel surface patches; oak trees root at the local surface height.
+- 3D-noise carvers wind spaghetti-cave tunnels through the stone below the dirt cap, with occasional surface entrances; the bedrock floor is never breached.
+- Coal and iron ore veins seed into stone (iron only below y=52); coal ore drops coal, a 4× furnace fuel, and iron ore smelts into iron ingots.
+- Smelting generalizes from food-only to item stacks, unlocking the iron ore → iron ingot furnace recipe.
+- A third iron tool tier (250 durability, 4× mining speed, +1 damage over stone) crafted from iron ingots; iron ore requires a stone pickaxe to drop.
+- Spawning scans columns top-down so players and beds land on the true surface instead of inside hills.
+
+All noise is a pure function of world coordinates and the world seed, so terrain is deterministic per seed and continuous across chunk borders. Existing saves keep their edits; the terrain underneath regenerates on the new algorithm.

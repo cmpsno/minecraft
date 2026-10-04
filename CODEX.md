@@ -1,8 +1,8 @@
-# Minecraft Superflat v1
+# Minecraft v1
 
 ## Goal
 
-Build a finite 1000×1000 Minecraft-style superflat world in C++17 and OpenGL. The base terrain stack is seven blocks high: Bedrock at y=0, Stone at y=1–2, Dirt at y=3–5, and a Grass, Sand, or Gravel surface at y=6, with sparse full oak trees above grass.
+Build a finite 1000×1000 Minecraft-style voxel world in C++17 and OpenGL. The terrain is a seeded fractal-noise heightmap with rolling hills: Bedrock at y=0, stone below, a dirt band, and a Grass, Sand, or Gravel surface, with sparse full oak trees rooted at the local surface height. 3D-noise carvers wind cave tunnels through the stone, seeded with coal and iron ore veins.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ The atlas is generated in memory to keep the executable self-contained. Loaded c
 - [x] Window and input
 - [x] Shader pipeline and texture atlas
 - [x] First-person camera
-- [x] Superflat generation
+- [x] Noise terrain generation (hills, caves, ores)
 - [x] 1000×1000 boundary
 - [x] Chunk streaming and visible-face meshing
 - [x] Block breaking and placing
