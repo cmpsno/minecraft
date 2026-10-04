@@ -129,7 +129,18 @@ void World::update(const glm::vec3&p){int pcx=std::clamp(floorDiv(static_cast<in
   discardDistantTasks(pcx,pcz);processPendingTasks(pcx,pcz);
 }
 void World::updateLighting(){for(auto& pair:m_chunks)if(pair.second->lightingDirty()){CachedLightSampler sampler{lightSampler(pair.first.x,pair.first.z)};pair.second->computeSkyLight([&sampler](int x,int y,int z){return sampler(x,y,z);});}}
-void World::render()const{PERF_SCOPE("world.render");for(const auto&pair:m_chunks)pair.second->render();}
+void World::render(const Frustum& frustum)const{
+  std::uint64_t drawn=0;
+  PERF_SCOPE_E("world.render",drawn);
+  for(const auto&pair:m_chunks){
+    const Chunk* chunk=pair.second.get();
+    const float x0=static_cast<float>(chunk->position().x*Chunk::SIZE_X);
+    const float z0=static_cast<float>(chunk->position().y*Chunk::SIZE_Z);
+    const glm::vec3 mn(x0,0.f,z0);
+    const glm::vec3 mx(x0+Chunk::SIZE_X,static_cast<float>(chunk->maxY()+1),z0+Chunk::SIZE_Z);
+    if(frustum.intersects(mn,mx)){chunk->render();++drawn;}
+  }
+}
 
 const FurnaceState* World::furnaceAt(const glm::ivec3& p)const{
   if(getBlock(p.x,p.y,p.z)!=BlockType::FURNACE)return nullptr;

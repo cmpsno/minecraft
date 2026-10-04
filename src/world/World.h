@@ -1,6 +1,7 @@
 #pragma once
 #include "Chunk.h"
 #include "FurnaceState.h"
+#include "../renderer/Frustum.h"
 #include <functional>
 #include <glm/glm.hpp>
 #include <memory>
@@ -34,7 +35,7 @@ public:
   void reset(std::uint32_t seed=0){m_chunks.clear();m_edits.clear();m_furnaces.clear();m_pendingTasks.clear();m_seed=seed;}
   void update(const glm::vec3& player);
   void updateLighting();
-  void render()const;
+  void render(const Frustum& frustum)const;
   BlockType getBlock(int x,int y,int z)const;
   std::uint8_t skyLight(int x,int y,int z)const;
   bool isChunkLoadedAt(int x,int z)const;

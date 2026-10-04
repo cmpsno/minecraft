@@ -4,9 +4,11 @@
 //   DISPLAY=:99 ./build/PerfBench
 #include "world/World.h"
 #include "world/WorldGenerator.h"
+#include "renderer/Frustum.h"
 #include "utils/Perf.h"
 #include <GLFW/glfw3.h>
 #include <glad/gl.h>
+#include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -94,6 +96,21 @@ int main() {
     std::printf("paced update() x900: avg=%.3fms p50=%.3fms p95=%.3fms max=%.3fms\n", total / samples.size(),
                 samples[samples.size() / 2], samples[samples.size() * 95 / 100], samples.back());
     Perf::report();
+
+    // Phase 4: frustum culling - eye-level camera, count drawn vs loaded chunks.
+    // (No game shader is bound, so this measures draw-call submission only.)
+    Perf::reset();
+    {
+      const glm::vec3 eye{500.5f, 75.f, 500.5f};
+      const glm::mat4 view = glm::lookAt(eye, eye + glm::vec3(1.f, -0.08f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+      const glm::mat4 proj = glm::perspective(glm::radians(70.f), 16.f / 9.f, 0.1f, 1000.f);
+      const Frustum frustum = Frustum::fromMatrix(proj * view);
+      const double r0 = nowMs();
+      for (int i = 0; i < 200; ++i) world.render(frustum);
+      std::printf("render x200 with frustum: %.2f ms total (%.3f ms/frame), %zu chunks loaded\n",
+                  nowMs() - r0, (nowMs() - r0) / 200, world.loadedChunkCount());
+      Perf::report();
+    }
   }
   glfwTerminate();
   return 0;
