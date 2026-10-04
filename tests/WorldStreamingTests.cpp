@@ -1,4 +1,5 @@
 #include "world/World.h"
+#include "world/WorldGenerator.h"
 #include <iostream>
 
 namespace{int fail(const char* message){std::cerr<<message<<'\n';return 1;}}
@@ -7,7 +8,8 @@ int main(){
   World world;world.setTaskBudgets(1,1,0);const glm::vec3 center{500.5f,8.f,500.5f};world.update(center);
   if(world.loadedChunkCount()!=1)return fail("streaming exceeded the one-generation frame budget");
   if(!world.isChunkLoadedAt(500,500))return fail("nearest player chunk was not generated first");
-  if(world.skyLight(500,8,500)!=15)return fail("generated chunk did not receive its budgeted lighting pass");
+  const int surface=WorldGenerator::surfaceHeightAt(500,500,world.seed());
+  if(world.skyLight(500,surface+1,500)!=15)return fail("generated chunk did not receive its budgeted lighting pass");
   if(world.isChunkReady(31,31))return fail("chunk became render-ready before its mesh task completed");
   const auto firstPending=world.pendingTaskCount();world.update(center);
   if(world.loadedChunkCount()!=2)return fail("second update did not process exactly one more generation");
