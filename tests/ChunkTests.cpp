@@ -31,6 +31,16 @@ int main() {
     c.setBlock(2, 7, 2, BlockType::GRASS);  // replace top: maxY unchanged
     if (c.maxY() != 7) return fail("maxY moved when replacing the top block");
   }
+  // Regression: mining one block of a shared top level must not move maxY.
+  {
+    Chunk c({0, 0});
+    for (int z = 0; z < 16; ++z)
+      for (int x = 0; x < 16; ++x) c.setBlock(x, 10, z, BlockType::STONE);  // plateau at y=10
+    if (c.maxY() != 10) return fail("plateau maxY != 10");
+    c.setBlock(3, 10, 4, BlockType::AIR);  // mine one top block
+    if (c.maxY() != 10) return fail("maxY dropped below surviving plateau blocks");
+    if (c.getBlock(5, 10, 6) != BlockType::STONE) return fail("plateau block lost");
+  }
   // max-Y matches the terrain generator's actual highest block.
   {
     Chunk c({31, 31});

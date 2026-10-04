@@ -7,7 +7,7 @@ Chunk::Chunk(glm::ivec2 p):m_position(p){m_blocks.fill(BlockType::AIR);}
 void Chunk::setBlock(int x,int y,int z,BlockType t){
   if(x<0||x>=SIZE_X||y<0||y>=SIZE_Y||z<0||z>=SIZE_Z||m_blocks[index(x,y,z)]==t)return;
   m_blocks[index(x,y,z)]=t;
-  if(t==BlockType::AIR){if(y==m_maxY){int ny=y-1;while(ny>=0&&levelEmpty(ny))--ny;m_maxY=ny;}}
+  if(t==BlockType::AIR){if(y==m_maxY){int ny=y;while(ny>=0&&levelEmpty(ny))--ny;m_maxY=ny;}}
   else if(y>m_maxY)m_maxY=y;
   markLightingDirty();
 }
