@@ -23,15 +23,21 @@ public:
   bool meshDirty()const{return m_meshDirty;}
   bool lightingDirty()const{return m_lightingDirty;}
   bool dirty()const{return m_meshDirty||m_lightingDirty;}
+  const BlockType* blockData()const{return m_blocks.data();}
   void markDirty(){m_meshDirty=true;}
   void markLightingDirty(){m_lightingDirty=true;m_meshDirty=true;}
   glm::ivec2 position()const{return m_position;}
+  // Highest y containing a non-air block, or -1 when empty. Maintained by
+  // setBlock so generateMesh can skip the empty air above the terrain.
+  int maxY()const{return m_maxY;}
 private:
   static constexpr int LIGHT_X=SIZE_X+2,LIGHT_Z=SIZE_Z+2;
   glm::ivec2 m_position; std::array<BlockType,COUNT> m_blocks{};
   std::array<std::uint8_t,LIGHT_X*SIZE_Y*LIGHT_Z> m_skyLight{}; Mesh m_mesh;
   bool m_ready=false,m_meshDirty=true,m_lightingDirty=true;
+  int m_maxY=-1;
   static int index(int x,int y,int z){return(y*SIZE_Z+z)*SIZE_X+x;}
   static int lightIndex(int x,int y,int z){return(y*LIGHT_Z+z+1)*LIGHT_X+x+1;}
+  bool levelEmpty(int y)const{for(int z=0;z<SIZE_Z;++z)for(int x=0;x<SIZE_X;++x)if(m_blocks[index(x,y,z)]!=BlockType::AIR)return false;return true;}
 };
 

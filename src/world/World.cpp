@@ -1,6 +1,8 @@
 #include "World.h"
 #include "WorldGenerator.h"
+#include "../utils/Perf.h"
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <tuple>
 #include <vector>
@@ -13,7 +15,38 @@ std::size_t World::BlockHash::operator()(const BlockKey& k)const{
 }
 Chunk* World::find(int x,int z){auto it=m_chunks.find({x,z});return it==m_chunks.end()?nullptr:it->second.get();}
 const Chunk* World::find(int x,int z)const{auto it=m_chunks.find({x,z});return it==m_chunks.end()?nullptr:it->second.get();}
-void World::createChunk(int x,int z){if(x<0||z<0||x>62||z>62||find(x,z))return;auto c=std::make_unique<Chunk>(glm::ivec2{x,z});WorldGenerator::generateTerrain(*c,m_seed);for(const auto& edit:m_edits)if(floorDiv(edit.first.x,16)==x&&floorDiv(edit.first.z,16)==z)c->setBlock(edit.first.x-x*16,edit.first.y,edit.first.z-z*16,edit.second);m_chunks.emplace(Key{x,z},std::move(c));markNeighbors(x,z);}
+
+namespace {
+// Wraps a LightSampler with a per-column cache. computeSkyLight's seed pass
+// calls the block source with constant (x,z) across its inner y loop, so
+// resolving the chunk pointer once per column removes ~540k divisions and
+// branches per chunk. Pure memoization: results are identical for any call
+// pattern, it just hits less often when y is not the inner loop.
+struct CachedLightSampler{
+  World::LightSampler sampler;
+  int wx=INT_MIN,wz=INT_MIN;
+  const BlockType* chunk=nullptr;
+  int bx=0,bz=0;
+  bool oob=false;
+  BlockType operator()(int x,int y,int z){
+    if(x!=wx||z!=wz){
+      wx=x;wz=z;
+      oob=(x<0||x>=1000||z<0||z>=1000);
+      if(!oob){
+        const int lx=(x-sampler.baseX)/Chunk::SIZE_X,lz=(z-sampler.baseZ)/Chunk::SIZE_Z;
+        chunk=sampler.c[lz][lx];
+        bx=x-(sampler.baseX+lx*Chunk::SIZE_X);
+        bz=z-(sampler.baseZ+lz*Chunk::SIZE_Z);
+      }else chunk=nullptr;
+    }
+    if(y<0)return BlockType::BEDROCK;
+    if(y>=Chunk::SIZE_Y||oob)return BlockType::AIR;
+    if(!chunk)return BlockType::BEDROCK;
+    return chunk[(y*Chunk::SIZE_Z+bz)*Chunk::SIZE_X+bx];
+  }
+};
+}
+void World::createChunk(int x,int z){PERF_SCOPE("world.generate");if(x<0||z<0||x>62||z>62||find(x,z))return;auto c=std::make_unique<Chunk>(glm::ivec2{x,z});WorldGenerator::generateTerrain(*c,m_seed);for(const auto& edit:m_edits)if(floorDiv(edit.first.x,16)==x&&floorDiv(edit.first.z,16)==z)c->setBlock(edit.first.x-x*16,edit.first.y,edit.first.z-z*16,edit.second);m_chunks.emplace(Key{x,z},std::move(c));markNeighbors(x,z);}
 void World::loadChunk(int x,int z){createChunk(x,z);}
 bool World::unloadChunk(int x,int z){if(!m_chunks.erase({x,z}))return false;m_pendingTasks.erase(std::remove_if(m_pendingTasks.begin(),m_pendingTasks.end(),[&](const ChunkTask& task){return task.position==glm::ivec2{x,z};}),m_pendingTasks.end());markNeighbors(x,z);return true;}
 bool World::isChunkReady(int x,int z)const{const auto* chunk=find(x,z);return chunk&&chunk->ready();}
@@ -68,17 +101,46 @@ bool World::setBlock(int x,int y,int z,BlockType t,const FurnaceDropHandler& dro
 }
 std::vector<World::EditEntry> World::getEditEntries()const{std::vector<EditEntry> entries;entries.reserve(m_edits.size());for(const auto& edit:m_edits)entries.push_back({edit.first.x,edit.first.y,edit.first.z,edit.second});std::sort(entries.begin(),entries.end(),[](const EditEntry&a,const EditEntry&b){return std::tie(a.x,a.y,a.z)<std::tie(b.x,b.y,b.z);});return entries;}
 void World::applyEditEntries(const std::vector<EditEntry>& entries){std::vector<Key> loaded;loaded.reserve(m_chunks.size());for(const auto& chunk:m_chunks)loaded.push_back(chunk.first);m_chunks.clear();m_pendingTasks.clear();m_edits.clear();m_furnaces.clear();for(const auto& edit:entries){const auto type=static_cast<std::size_t>(edit.type);if(edit.x<0||edit.x>=1000||edit.z<0||edit.z>=1000||edit.y<0||edit.y>=Chunk::SIZE_Y||type>=BLOCK_TYPE_COUNT)continue;m_edits[{edit.x,edit.y,edit.z}]=edit.type;if(edit.type==BlockType::FURNACE)m_furnaces.try_emplace({edit.x,edit.y,edit.z});else m_furnaces.erase({edit.x,edit.y,edit.z});}for(const auto& key:loaded)loadChunk(key.x,key.z);}
-bool World::processNearestTask(ChunkTaskType type,int pcx,int pcz){auto nearest=m_pendingTasks.end();int best=0;for(auto it=m_pendingTasks.begin();it!=m_pendingTasks.end();++it){if(it->type!=type)continue;const int dx=it->position.x-pcx,dz=it->position.y-pcz,distance=dx*dx+dz*dz;if(nearest==m_pendingTasks.end()||distance<best||(distance==best&&std::tie(it->position.y,it->position.x)<std::tie(nearest->position.y,nearest->position.x))){nearest=it;best=distance;}}if(nearest==m_pendingTasks.end())return false;const ChunkTask task=*nearest;m_pendingTasks.erase(nearest);const int x=task.position.x,z=task.position.y;if(type==ChunkTaskType::GENERATE){if(!find(x,z))createChunk(x,z);if(find(x,z))queueTask(x,z,ChunkTaskType::UPDATE_LIGHTING);}else if(auto* chunk=find(x,z)){if(type==ChunkTaskType::UPDATE_LIGHTING){if(chunk->lightingDirty())chunk->computeSkyLight([this](int wx,int y,int wz){return lightingBlock(wx,y,wz);});if(chunk->meshDirty())queueTask(x,z,ChunkTaskType::REBUILD_MESH);}else if(chunk->lightingDirty())queueTask(x,z,ChunkTaskType::UPDATE_LIGHTING);else if(chunk->meshDirty())chunk->generateMesh([this](int wx,int y,int wz){return getBlock(wx,y,wz);});}return true;}
-void World::processPendingTasks(int pcx,int pcz){for(int i=0;i<m_generationBudget&&processNearestTask(ChunkTaskType::GENERATE,pcx,pcz);++i){}for(int i=0;i<m_lightingBudget&&processNearestTask(ChunkTaskType::UPDATE_LIGHTING,pcx,pcz);++i){}for(int i=0;i<m_meshBudget&&processNearestTask(ChunkTaskType::REBUILD_MESH,pcx,pcz);++i){}}
+bool World::processNearestTask(ChunkTaskType type,int pcx,int pcz){auto nearest=m_pendingTasks.end();int best=0;for(auto it=m_pendingTasks.begin();it!=m_pendingTasks.end();++it){if(it->type!=type)continue;if(type==ChunkTaskType::UPDATE_LIGHTING&&!lightingReady(it->position.x,it->position.y,pcx,pcz))continue;const int dx=it->position.x-pcx,dz=it->position.y-pcz,distance=dx*dx+dz*dz;if(nearest==m_pendingTasks.end()||distance<best||(distance==best&&std::tie(it->position.y,it->position.x)<std::tie(nearest->position.y,nearest->position.x))){nearest=it;best=distance;}}if(nearest==m_pendingTasks.end())return false;const ChunkTask task=*nearest;m_pendingTasks.erase(nearest);const int x=task.position.x,z=task.position.y;if(type==ChunkTaskType::GENERATE){PERF_SCOPE("task.generate");if(!find(x,z))createChunk(x,z);if(find(x,z))queueTask(x,z,ChunkTaskType::UPDATE_LIGHTING);}else if(auto* chunk=find(x,z)){if(type==ChunkTaskType::UPDATE_LIGHTING){PERF_SCOPE("task.light");if(chunk->lightingDirty()){CachedLightSampler sampler{lightSampler(x,z)};chunk->computeSkyLight([&sampler](int wx,int y,int wz){return sampler(wx,y,wz);});}if(chunk->meshDirty())queueTask(x,z,ChunkTaskType::REBUILD_MESH);}else{PERF_SCOPE("task.mesh");if(chunk->lightingDirty())queueTask(x,z,ChunkTaskType::UPDATE_LIGHTING);else if(chunk->meshDirty())chunk->generateMesh([this](int wx,int y,int wz){return getBlock(wx,y,wz);});}}return true;}
+void World::processPendingTasks(int pcx,int pcz){PERF_SCOPE("world.tasks");for(int i=0;i<m_generationBudget&&processNearestTask(ChunkTaskType::GENERATE,pcx,pcz);++i){}for(int i=0;i<m_lightingBudget&&processNearestTask(ChunkTaskType::UPDATE_LIGHTING,pcx,pcz);++i){}for(int i=0;i<m_meshBudget&&processNearestTask(ChunkTaskType::REBUILD_MESH,pcx,pcz);++i){}}
 void World::discardDistantTasks(int pcx,int pcz){m_pendingTasks.erase(std::remove_if(m_pendingTasks.begin(),m_pendingTasks.end(),[&](const ChunkTask& task){return std::abs(task.position.x-pcx)>m_renderDistance+1||std::abs(task.position.y-pcz)>m_renderDistance+1;}),m_pendingTasks.end());}
+bool World::lightingReady(int cx,int cz,int pcx,int pcz)const{
+  for(int dz=-1;dz<=1;++dz)for(int dx=-1;dx<=1;++dx){
+    if(dx==0&&dz==0)continue;
+    const int nx=cx+dx,nz=cz+dz;
+    if(nx<0||nz<0||nx>62||nz>62)continue;
+    if(std::abs(nx-pcx)>m_renderDistance||std::abs(nz-pcz)>m_renderDistance)continue;
+    if(!find(nx,nz))return false;
+  }
+  return true;
+}
+World::LightSampler World::lightSampler(int cx,int cz)const{
+  LightSampler s;s.baseX=(cx-1)*Chunk::SIZE_X;s.baseZ=(cz-1)*Chunk::SIZE_Z;
+  for(int dz=0;dz<3;++dz)for(int dx=0;dx<3;++dx){
+    const Chunk* chunk=find(cx-1+dx,cz-1+dz);
+    s.c[dz][dx]=chunk?chunk->blockData():nullptr;
+  }
+  return s;
+}
 void World::update(const glm::vec3&p){int pcx=std::clamp(floorDiv(static_cast<int>(std::floor(p.x)),16),0,62),pcz=std::clamp(floorDiv(static_cast<int>(std::floor(p.z)),16),0,62);
   for(int z=pcz-m_renderDistance;z<=pcz+m_renderDistance;++z)for(int x=pcx-m_renderDistance;x<=pcx+m_renderDistance;++x)if(!find(x,z))queueTask(x,z,ChunkTaskType::GENERATE);
   std::vector<Key> unload;for(const auto& pair:m_chunks)if(std::abs(pair.first.x-pcx)>m_renderDistance+1||std::abs(pair.first.z-pcz)>m_renderDistance+1)unload.push_back(pair.first);for(const auto& key:unload)unloadChunk(key.x,key.z);
   for(const auto& pair:m_chunks)if(pair.second->lightingDirty())queueTask(pair.first.x,pair.first.z,ChunkTaskType::UPDATE_LIGHTING);else if(pair.second->meshDirty())queueTask(pair.first.x,pair.first.z,ChunkTaskType::REBUILD_MESH);
   discardDistantTasks(pcx,pcz);processPendingTasks(pcx,pcz);
 }
-void World::updateLighting(){for(auto& pair:m_chunks)if(pair.second->lightingDirty())pair.second->computeSkyLight([this](int x,int y,int z){return lightingBlock(x,y,z);});}
-void World::render()const{for(const auto&pair:m_chunks)pair.second->render();}
+void World::updateLighting(){for(auto& pair:m_chunks)if(pair.second->lightingDirty()){CachedLightSampler sampler{lightSampler(pair.first.x,pair.first.z)};pair.second->computeSkyLight([&sampler](int x,int y,int z){return sampler(x,y,z);});}}
+void World::render(const Frustum& frustum)const{
+  std::uint64_t drawn=0;
+  PERF_SCOPE_E("world.render",drawn);
+  for(const auto&pair:m_chunks){
+    const Chunk* chunk=pair.second.get();
+    const float x0=static_cast<float>(chunk->position().x*Chunk::SIZE_X);
+    const float z0=static_cast<float>(chunk->position().y*Chunk::SIZE_Z);
+    const glm::vec3 mn(x0,0.f,z0);
+    const glm::vec3 mx(x0+Chunk::SIZE_X,static_cast<float>(chunk->maxY()+1),z0+Chunk::SIZE_Z);
+    if(frustum.intersects(mn,mx)){chunk->render();++drawn;}
+  }
+}
 
 const FurnaceState* World::furnaceAt(const glm::ivec3& p)const{
   if(getBlock(p.x,p.y,p.z)!=BlockType::FURNACE)return nullptr;

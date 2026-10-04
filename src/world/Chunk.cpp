@@ -1,9 +1,16 @@
 #include "Chunk.h"
+#include "../utils/Perf.h"
 #include <algorithm>
 #include <queue>
 
 Chunk::Chunk(glm::ivec2 p):m_position(p){m_blocks.fill(BlockType::AIR);}
-void Chunk::setBlock(int x,int y,int z,BlockType t){if(x>=0&&x<SIZE_X&&y>=0&&y<SIZE_Y&&z>=0&&z<SIZE_Z&&m_blocks[index(x,y,z)]!=t){m_blocks[index(x,y,z)]=t;markLightingDirty();}}
+void Chunk::setBlock(int x,int y,int z,BlockType t){
+  if(x<0||x>=SIZE_X||y<0||y>=SIZE_Y||z<0||z>=SIZE_Z||m_blocks[index(x,y,z)]==t)return;
+  m_blocks[index(x,y,z)]=t;
+  if(t==BlockType::AIR){if(y==m_maxY){int ny=y;while(ny>=0&&levelEmpty(ny))--ny;m_maxY=ny;}}
+  else if(y>m_maxY)m_maxY=y;
+  markLightingDirty();
+}
 BlockType Chunk::getBlock(int x,int y,int z)const{return x>=0&&x<SIZE_X&&y>=0&&y<SIZE_Y&&z>=0&&z<SIZE_Z?m_blocks[index(x,y,z)]:BlockType::AIR;}
 namespace {
 constexpr int DIRECTIONS[6][3]={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
@@ -23,6 +30,7 @@ float Chunk::faceShade(int x,int y,int z,int face)const{
 }
 
 void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
+  PERF_SCOPE("light.compute");
   // Level 15 travels at most 14 steps with nonzero light. A 15-cell halo
   // therefore computes even the retained one-cell mesh border independently
   // of neighboring chunks' lighting state and update order.
@@ -32,6 +40,8 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
   std::vector<std::uint8_t> light(plane*SIZE_Y,0),attenuation(plane*SIZE_Y,15);
   std::queue<int> open;
   const int ox=m_position.x*SIZE_X,oz=m_position.y*SIZE_Z;
+  {
+  PERF_SCOPE("light.seed");
   for(int z=0;z<depth;++z)for(int x=0;x<width;++x){
     int direct=15;
     for(int y=SIZE_Y-1;y>=0;--y){
@@ -43,6 +53,9 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
       light[i]=static_cast<std::uint8_t>(direct);
     }
   }
+  }
+  {
+  PERF_SCOPE("light.frontier");
   // Most of the volume is open sky. Queue only the frontier where a seeded
   // cell can actually brighten a neighbor, rather than every sky cell.
   for(int y=0;y<SIZE_Y;++y)for(int z=0;z<depth;++z)for(int x=0;x<width;++x){
@@ -53,6 +66,9 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
        (z>0&&needsLight(i-width))||(z+1<depth&&needsLight(i+width))||
        (y>0&&needsLight(i-plane)))open.push(i);
   }
+  }
+  {
+  PERF_SCOPE("light.bfs");
   while(!open.empty()){
     const int i=open.front();open.pop();
     const int x=i%width,z=(i/width)%depth,y=i/plane;
@@ -67,28 +83,45 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
       if(next>1)open.push(ni);
     }
   }
+  }
+  {
+  PERF_SCOPE("light.copy");
   for(int y=0;y<SIZE_Y;++y)for(int z=-1;z<=SIZE_Z;++z)for(int x=-1;x<=SIZE_X;++x)
     m_skyLight[lightIndex(x,y,z)]=light[sampleIndex(x+LIGHT_RADIUS,y,z+LIGHT_RADIUS)];
+  }
   m_lightingDirty=false;m_meshDirty=true;
 }
 
 void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
   if(m_lightingDirty)computeSkyLight(at);
   std::vector<Vertex> v;std::vector<unsigned> idx;v.reserve(4096);idx.reserve(6144);
+  std::uint64_t faces=0;
+  {
+  PERF_SCOPE_E("mesh.build",faces);
   static constexpr int dirs[6][3]={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
   static constexpr float q[6][4][3]={
     {{1,0,0},{1,1,0},{1,1,1},{1,0,1}},{{0,0,1},{0,1,1},{0,1,0},{0,0,0}},
     {{0,1,1},{1,1,1},{1,1,0},{0,1,0}},{{0,0,0},{1,0,0},{1,0,1},{0,0,1}},
     {{1,0,1},{1,1,1},{0,1,1},{0,0,1}},{{0,0,0},{0,1,0},{1,1,0},{1,0,0}}};
   const int ox=m_position.x*SIZE_X,oz=m_position.y*SIZE_Z;
-  for(int y=0;y<SIZE_Y;++y)for(int z=0;z<SIZE_Z;++z)for(int x=0;x<SIZE_X;++x){
+  for(int y=0;y<=m_maxY;++y)for(int z=0;z<SIZE_Z;++z)for(int x=0;x<SIZE_X;++x){
     BlockType type=getBlock(x,y,z);if(type==BlockType::AIR)continue;
     int tile=static_cast<int>(type);if(tile<0||tile>=static_cast<int>(BLOCK_TYPE_COUNT))tile=static_cast<int>(BlockType::BEDROCK);float u0=(tile+.02f)/static_cast<float>(BLOCK_TYPE_COUNT),u1=(tile+.98f)/static_cast<float>(BLOCK_TYPE_COUNT);
-    for(int f=0;f<6;++f){int wx=ox+x,wz=oz+z;if(isSolid(at(wx+dirs[f][0],y+dirs[f][1],wz+dirs[f][2])))continue;
+    for(int f=0;f<6;++f){
+      const int nx=x+dirs[f][0],ny=y+dirs[f][1],nz=z+dirs[f][2];
+      const BlockType nt=(nx>=0&&nx<SIZE_X&&ny>=0&&ny<SIZE_Y&&nz>=0&&nz<SIZE_Z)
+          ?m_blocks[index(nx,ny,nz)]:at(ox+nx,ny,oz+nz);
+      if(isSolid(nt))continue;
+      const int wx=ox+x,wz=oz+z;
       unsigned base=static_cast<unsigned>(v.size());float us[4]={u0,u0,u1,u1},vs[4]={0,1,1,0};
       float light=faceShade(x,y,z,f);for(int n=0;n<4;++n)v.push_back({wx+q[f][n][0],y+q[f][n][1],wz+q[f][n][2],us[n],vs[n],light});
-      idx.insert(idx.end(),{base,base+1,base+2,base,base+2,base+3});
+      ++faces;idx.insert(idx.end(),{base,base+1,base+2,base,base+2,base+3});
     }}
-  m_mesh.update(v,idx);m_meshDirty=false;m_ready=true;
+  }
+  {
+  PERF_SCOPE("mesh.upload");
+  m_mesh.update(v,idx);
+  }
+  m_meshDirty=false;m_ready=true;
 }
 
