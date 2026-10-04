@@ -92,7 +92,7 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
   m_lightingDirty=false;m_meshDirty=true;
 }
 
-void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
+void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at, bool useMaxYBound){
   if(m_lightingDirty)computeSkyLight(at);
   std::vector<Vertex> v;std::vector<unsigned> idx;v.reserve(4096);idx.reserve(6144);
   std::uint64_t faces=0;
@@ -104,7 +104,7 @@ void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
     {{0,1,1},{1,1,1},{1,1,0},{0,1,0}},{{0,0,0},{1,0,0},{1,0,1},{0,0,1}},
     {{1,0,1},{1,1,1},{0,1,1},{0,0,1}},{{0,0,0},{0,1,0},{1,1,0},{1,0,0}}};
   const int ox=m_position.x*SIZE_X,oz=m_position.y*SIZE_Z;
-  for(int y=0;y<=m_maxY;++y)for(int z=0;z<SIZE_Z;++z)for(int x=0;x<SIZE_X;++x){
+  for(int y=0;y<=(useMaxYBound?m_maxY:SIZE_Y-1);++y)for(int z=0;z<SIZE_Z;++z)for(int x=0;x<SIZE_X;++x){
     BlockType type=getBlock(x,y,z);if(type==BlockType::AIR)continue;
     int tile=static_cast<int>(type);if(tile<0||tile>=static_cast<int>(BLOCK_TYPE_COUNT))tile=static_cast<int>(BlockType::BEDROCK);float u0=(tile+.02f)/static_cast<float>(BLOCK_TYPE_COUNT),u1=(tile+.98f)/static_cast<float>(BLOCK_TYPE_COUNT);
     for(int f=0;f<6;++f){
