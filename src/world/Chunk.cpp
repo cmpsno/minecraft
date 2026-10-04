@@ -34,6 +34,8 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
   std::vector<std::uint8_t> light(plane*SIZE_Y,0),attenuation(plane*SIZE_Y,15);
   std::queue<int> open;
   const int ox=m_position.x*SIZE_X,oz=m_position.y*SIZE_Z;
+  {
+  PERF_SCOPE("light.seed");
   for(int z=0;z<depth;++z)for(int x=0;x<width;++x){
     int direct=15;
     for(int y=SIZE_Y-1;y>=0;--y){
@@ -45,6 +47,9 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
       light[i]=static_cast<std::uint8_t>(direct);
     }
   }
+  }
+  {
+  PERF_SCOPE("light.frontier");
   // Most of the volume is open sky. Queue only the frontier where a seeded
   // cell can actually brighten a neighbor, rather than every sky cell.
   for(int y=0;y<SIZE_Y;++y)for(int z=0;z<depth;++z)for(int x=0;x<width;++x){
@@ -55,6 +60,9 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
        (z>0&&needsLight(i-width))||(z+1<depth&&needsLight(i+width))||
        (y>0&&needsLight(i-plane)))open.push(i);
   }
+  }
+  {
+  PERF_SCOPE("light.bfs");
   while(!open.empty()){
     const int i=open.front();open.pop();
     const int x=i%width,z=(i/width)%depth,y=i/plane;
@@ -69,8 +77,12 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
       if(next>1)open.push(ni);
     }
   }
+  }
+  {
+  PERF_SCOPE("light.copy");
   for(int y=0;y<SIZE_Y;++y)for(int z=-1;z<=SIZE_Z;++z)for(int x=-1;x<=SIZE_X;++x)
     m_skyLight[lightIndex(x,y,z)]=light[sampleIndex(x+LIGHT_RADIUS,y,z+LIGHT_RADIUS)];
+  }
   m_lightingDirty=false;m_meshDirty=true;
 }
 

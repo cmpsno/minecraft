@@ -23,6 +23,7 @@ public:
   bool meshDirty()const{return m_meshDirty;}
   bool lightingDirty()const{return m_lightingDirty;}
   bool dirty()const{return m_meshDirty||m_lightingDirty;}
+  const BlockType* blockData()const{return m_blocks.data();}
   void markDirty(){m_meshDirty=true;}
   void markLightingDirty(){m_lightingDirty=true;m_meshDirty=true;}
   glm::ivec2 position()const{return m_position;}
