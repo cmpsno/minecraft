@@ -224,17 +224,29 @@ struct Camera {
   glm::vec3 eye;
   float yaw, pitch, fov;
   std::string name;
+  // Straight-up cameras legitimately see only sky; everything else must see
+  // a non-trivial frame (per-pair floor, enforced in checkCamera).
+  bool expectTerrain = true;
 };
 
 // Fraction of pixels that are not the sky-blue clear color (115,166,255).
 // Guards against the classic lie: a drain-loop regression that leaves the
 // world empty makes every A/B pair trivially identical (two blank frames).
-float terrainFraction(const std::vector<unsigned char>& px) {
+long nonSkyPixels(const std::vector<unsigned char>& px) {
   long n = 0;
   for (size_t i = 0; i < px.size(); i += 3)
     if (!(px[i] == 115 && px[i + 1] == 166 && px[i + 2] == 255)) ++n;
-  return float(n) / float(px.size() / 3);
+  return n;
 }
+
+float terrainFraction(const std::vector<unsigned char>& px) {
+  return float(nonSkyPixels(px)) / float(px.size() / 3);
+}
+
+// Per-pair floor: a terrain-expected camera whose frame is (nearly) all sky
+// means the world failed to load — fail loudly here, not just at the suite
+// level, so the failure points at the camera. 500 px ~= 0.05% of 1280x720.
+constexpr long MIN_NONSKY_PIXELS = 500;
 
 // Render A=cull,B=no-cull under both mesh states; compare cull<->nocull and
 // bound-on<->bound-off. Caller guarantees bound-ON meshes on entry.
@@ -251,6 +263,15 @@ void checkCamera(GL& gl, World& world, const Camera& cam) {
   renderFrame(gl, world, open, vp, d);
   compareFrames(cam.name + " | cull on vs off (bound off)", c, d);
   compareFrames(cam.name + " | maxY bound on vs off", a, c);
+  // Per-pair non-trivial-pixel floor: two identical blank frames must never
+  // pass. Straight-up (pitch +89) cameras are exempt — pure sky is expected.
+  if (cam.expectTerrain) {
+    long n = nonSkyPixels(a);
+    if (n < MIN_NONSKY_PIXELS) {
+      ++g_failures;
+      std::cout << "  FAIL " << cam.name << " | trivial frame: only " << n << " non-sky pixels\n";
+    }
+  }
   world.debugRemesh(true);
 }
 }  // namespace
@@ -266,7 +287,8 @@ std::vector<Camera> buildSweep(World& world) {
   for (float pitch : {-89.f, -45.f, 0.f, 45.f, 89.f})
     for (float yaw : {0.f, 90.f, 180.f})
       cams.push_back({base, yaw, pitch, 70.f,
-                      "pitch-" + std::to_string(int(pitch)) + "-yaw-" + std::to_string(int(yaw))});
+                      "pitch-" + std::to_string(int(pitch)) + "-yaw-" + std::to_string(int(yaw)),
+                      /*expectTerrain=*/pitch != 89.f});
   for (float fov : {30.f, 70.f, 110.f, 140.f})
     cams.push_back({base, 45.f, -10.f, fov, "fov-" + std::to_string(int(fov))});
   // hilltop / valley: scan the neighbourhood for extremes
@@ -315,11 +337,12 @@ void task2_sweep(GL& gl, World& world) {
   auto cams = buildSweep(world);
   std::cout << "  cameras: " << cams.size() << "\n";
   for (const auto& cam : cams) checkCamera(gl, world, cam);
-  // Empty-scene guard: at least one camera must see mostly terrain. A drain
-  // regression that loads no chunks would otherwise pass every comparison
-  // (two blank frames are always identical).
+  // Empty-scene guard (his bar, pre-push req 1): at least one camera must see
+  // mostly terrain. A drain regression that loads no chunks would otherwise
+  // pass every comparison (two blank frames are always identical). Observed
+  // ~0.70 non-sky on seed 7; the floor is 0.7.
   std::cout << "  max terrain fraction seen: " << g_maxTerrainFrac << "\n";
-  CHECK(g_maxTerrainFrac > 0.5f);
+  CHECK(g_maxTerrainFrac > 0.7f);
 }
 
 // ---- Task 3: maxY edit scenarios ----
