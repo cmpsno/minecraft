@@ -60,6 +60,10 @@ private:
   void processPendingTasks(int pcx,int pcz);
   void discardDistantTasks(int pcx,int pcz);
   void markNeighbors(int cx,int cz);
+  // True when every neighbour this chunk's 15-cell lighting halo can sample is
+  // either loaded, outside the world, or outside the generation range (where
+  // the halo falls back to lightingBlock's answer for missing chunks).
+  bool lightingReady(int cx,int cz,int pcx,int pcz)const;
   void invalidateLightingAt(int x,int z);
   BlockType lightingBlock(int x,int y,int z)const;
 };
