@@ -185,3 +185,12 @@ if(BUILD_TESTING)
   add_test(NAME menus_application COMMAND MenusApplicationTests)
   set_tests_properties(menus_application PROPERTIES SKIP_RETURN_CODE 77)
 endif()
+
+# Headless renderer benchmark (Sodium-style perf pass). Needs a GL context;
+# run under Xvfb. Not part of ctest.
+add_executable(PerfBench
+  bench/perf_bench.cpp
+  src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp
+  src/renderer/Mesh.cpp)
+target_include_directories(PerfBench PRIVATE src)
+target_link_libraries(PerfBench PRIVATE glfw glad_gl_core_33 glm::glm)

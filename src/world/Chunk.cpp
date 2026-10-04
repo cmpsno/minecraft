@@ -1,4 +1,5 @@
 #include "Chunk.h"
+#include "../utils/Perf.h"
 #include <algorithm>
 #include <queue>
 
@@ -23,6 +24,7 @@ float Chunk::faceShade(int x,int y,int z,int face)const{
 }
 
 void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
+  PERF_SCOPE("light.compute");
   // Level 15 travels at most 14 steps with nonzero light. A 15-cell halo
   // therefore computes even the retained one-cell mesh border independently
   // of neighboring chunks' lighting state and update order.
@@ -75,6 +77,9 @@ void Chunk::computeSkyLight(const std::function<BlockType(int,int,int)>& at){
 void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
   if(m_lightingDirty)computeSkyLight(at);
   std::vector<Vertex> v;std::vector<unsigned> idx;v.reserve(4096);idx.reserve(6144);
+  std::uint64_t faces=0;
+  {
+  PERF_SCOPE_E("mesh.build",faces);
   static constexpr int dirs[6][3]={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
   static constexpr float q[6][4][3]={
     {{1,0,0},{1,1,0},{1,1,1},{1,0,1}},{{0,0,1},{0,1,1},{0,1,0},{0,0,0}},
@@ -87,8 +92,13 @@ void Chunk::generateMesh(const std::function<BlockType(int,int,int)>& at){
     for(int f=0;f<6;++f){int wx=ox+x,wz=oz+z;if(isSolid(at(wx+dirs[f][0],y+dirs[f][1],wz+dirs[f][2])))continue;
       unsigned base=static_cast<unsigned>(v.size());float us[4]={u0,u0,u1,u1},vs[4]={0,1,1,0};
       float light=faceShade(x,y,z,f);for(int n=0;n<4;++n)v.push_back({wx+q[f][n][0],y+q[f][n][1],wz+q[f][n][2],us[n],vs[n],light});
-      idx.insert(idx.end(),{base,base+1,base+2,base,base+2,base+3});
+      ++faces;idx.insert(idx.end(),{base,base+1,base+2,base,base+2,base+3});
     }}
-  m_mesh.update(v,idx);m_meshDirty=false;m_ready=true;
+  }
+  {
+  PERF_SCOPE("mesh.upload");
+  m_mesh.update(v,idx);
+  }
+  m_meshDirty=false;m_ready=true;
 }
 
