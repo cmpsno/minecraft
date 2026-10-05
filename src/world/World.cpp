@@ -174,3 +174,12 @@ void World::visitLoadedFurnaces(const std::function<void(const glm::ivec3&,const
   for(const auto& entry:m_furnaces)if(isChunkReady(floorDiv(entry.first.x,16),floorDiv(entry.first.z,16)))
     visitor({entry.first.x,entry.first.y,entry.first.z},entry.second);
 }
+void World::debugRemesh(bool useMaxYBound){
+  for(auto& pair:m_chunks)
+    pair.second->generateMesh([this](int wx,int y,int wz){return getBlock(wx,y,wz);},useMaxYBound);
+}
+std::vector<World::ChunkDebugInfo> World::debugChunkInfo()const{
+  std::vector<World::ChunkDebugInfo> out;out.reserve(m_chunks.size());
+  for(const auto& pair:m_chunks){const Chunk* c=pair.second.get();out.push_back({pair.first.x,pair.first.z,c->maxY(),c->ready(),c->meshDirty(),c->lightingDirty()});}
+  return out;
+}

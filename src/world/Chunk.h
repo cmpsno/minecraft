@@ -17,7 +17,7 @@ public:
   std::uint8_t skyLight(int x,int y,int z)const;
   // Face order: +X, -X, +Y, -Y, +Z, -Z. Includes directional shade.
   float faceShade(int x,int y,int z,int face)const;
-  void generateMesh(const std::function<BlockType(int,int,int)>& worldBlock);
+  void generateMesh(const std::function<BlockType(int,int,int)>& worldBlock, bool useMaxYBound = true);
   void render()const{if(m_ready)m_mesh.render();}
   bool ready()const{return m_ready;}
   bool meshDirty()const{return m_meshDirty;}

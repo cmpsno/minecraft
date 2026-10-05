@@ -196,6 +196,14 @@ if(BUILD_TESTING)
   target_link_libraries(MenusApplicationTests PRIVATE glfw glad_gl_core_33 glm::glm)
   add_test(NAME menus_application COMMAND MenusApplicationTests)
   set_tests_properties(menus_application PROPERTIES SKIP_RETURN_CODE 77)
+  # Visual equivalence for culling + maxY (PR #2). GL-gated like the others;
+  # GLFW_INCLUDE_NONE lets it build where system GL headers are missing.
+  add_executable(VisualEquivalenceTests tests/VisualEquivalenceTests.cpp src/world/World.cpp src/world/WorldGenerator.cpp src/world/Chunk.cpp src/renderer/Mesh.cpp)
+  target_include_directories(VisualEquivalenceTests PRIVATE src)
+  target_compile_definitions(VisualEquivalenceTests PRIVATE GLFW_INCLUDE_NONE)
+  target_link_libraries(VisualEquivalenceTests PRIVATE glfw glad_gl_core_33 glm::glm)
+  add_test(NAME visual_equivalence COMMAND VisualEquivalenceTests)
+  set_tests_properties(visual_equivalence PROPERTIES SKIP_RETURN_CODE 77)
 endif()
 
 # Headless renderer benchmark (Sodium-style perf pass). Needs a GL context;

@@ -58,6 +58,12 @@ public:
   void setViewDistance(int distance);
   std::vector<EditEntry> getEditEntries()const;
   void applyEditEntries(const std::vector<EditEntry>& entries);
+  // --- Test/debug support (not used by the game) ---
+  // Rebuild every loaded chunk's mesh with or without the maxY bound, so a
+  // test can compare the optimized mesh against the full-height reference.
+  void debugRemesh(bool useMaxYBound);
+  struct ChunkDebugInfo { int cx,cz,maxY; bool ready,meshDirty,lightingDirty; };
+  std::vector<ChunkDebugInfo> debugChunkInfo()const;
 private:
   struct Key{int x,z;bool operator==(const Key&o)const{return x==o.x&&z==o.z;}};
   struct Hash{std::size_t operator()(const Key&k)const{return(static_cast<std::size_t>(static_cast<unsigned>(k.x))<<32)^static_cast<unsigned>(k.z);}};
